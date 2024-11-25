@@ -1,0 +1,15 @@
+{
+    "port": 3000,
+    "adapter": "127.0.0.1",
+    "endpoints": {
+      "/api/v2": {
+          "adapter": "deckard_llm_v1",
+          "url": "http://lib.unb.ca"
+      }
+    },
+    "logging": "newrelic",
+    "license_key": "YOURKEY",
+    "messages": {
+      "auth_failure": "Unauthorized or forbidden endpoint access"
+    }
+}
