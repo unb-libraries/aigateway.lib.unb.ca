@@ -92,6 +92,9 @@ impl RequestMetadata {
         if strip_auth {
             parts.headers.remove("x-api-key");
             parts.headers.remove("x-pub-key");
+            // recalclate the content-length header
+            let content_length = body_bytes.len();
+            parts.headers.insert("content-length", HeaderValue::from(content_length));
         }
 
         let req_clone = Request::from_parts(parts, Body::from(body_bytes.clone()));

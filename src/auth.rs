@@ -50,9 +50,9 @@ pub struct KeyEntry {
 /// let label = "example_key";
 /// let expiry = Some("2023-12-31T23:59:59Z".to_string());
 /// let endpoints = vec!["/api/v1/resource".to_string()];
-/// generate_key(label, expiry, endpoints).await;
+/// generate_auth_keys(label, expiry, endpoints).await;
 /// ```
-pub async fn generate_key(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
+pub async fn generate_auth_keys(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
     let new_key = uuid::Uuid::new_v4().to_string();
     let pub_key: String = uuid::Uuid::new_v4().to_string();
 
@@ -77,6 +77,18 @@ pub async fn generate_key(label: &str, expiry: Option<String>, endpoints: Vec<St
     println!("Generated Private Key: {}", new_key);
 
     println!("API key added to keys.json");
+}
+
+fn generate_key_pair() -> (String, String) {
+    (generate_priv_key(), generate_pub_key())
+}
+
+fn generate_priv_key() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
+fn generate_pub_key() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
 /// Hashes a given key using Argon2.
@@ -230,4 +242,58 @@ pub async fn load_keys() -> Vec<KeyEntry> {
 async fn save_keys(keys: &[KeyEntry]) {
     let contents = serde_json::to_string_pretty(keys).expect("Failed to serialize keys");
     fs::write(KEYS_FILE, contents).await.expect("Failed to write keys.json");
+}
+
+// Tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hash_key() {
+        let key = "test_key";
+        let hashed_key = hash_key(key);
+
+        // Ensure the hashed key is not empty
+        assert!(!hashed_key.is_empty());
+
+        // Verify the hashed key can be parsed
+        let parsed_hash = PasswordHash::new(&hashed_key).expect("Failed to parse hashed key");
+
+        // Verify the hashed key matches the original key
+        assert!(Argon2::default()
+            .verify_password(key.as_bytes(), &parsed_hash)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_hash_key_different_inputs() {
+        let key1 = "test_key_1";
+        let key2 = "test_key_2";
+
+        let hashed_key1 = hash_key(key1);
+        let hashed_key2 = hash_key(key2);
+
+        // Ensure the hashed keys are not empty
+        assert!(!hashed_key1.is_empty());
+        assert!(!hashed_key2.is_empty());
+
+        // Ensure the hashed keys are different
+        assert_ne!(hashed_key1, hashed_key2);
+    }
+
+    #[test]
+    fn test_hash_key_same_input() {
+        let key = "test_key";
+
+        let hashed_key1 = hash_key(key);
+        let hashed_key2 = hash_key(key);
+
+        // Ensure the hashed keys are not empty
+        assert!(!hashed_key1.is_empty());
+        assert!(!hashed_key2.is_empty());
+
+        // Ensure the hashed keys are different due to random salt
+        assert_ne!(hashed_key1, hashed_key2);
+    }
 }
