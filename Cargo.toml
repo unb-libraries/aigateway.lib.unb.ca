@@ -8,16 +8,16 @@ edition = "2021"
 argon2 = "0.5.3"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.2", features = ["derive"] }
-dialoguer = "0.10"
-env_logger = "0.9"
+dialoguer = "0.11.0"
+env_logger = "0.11.5"
 hyper = { version = "0.14.31", features = ["server", "client", "tcp", "http1", "http2"] }
 log = "0.4"
 password-hash = "0.5"
 rand = "0.8"
-reqwest = "0.12"
+reqwest = "0.12.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "v6"] }
