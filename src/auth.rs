@@ -37,15 +37,15 @@ pub struct KeyEntry {
 }
 
 /// Generates a new API key, hashes it, and saves it to the keys file.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `label` - A string slice that holds the label for the key.
 /// * `expiry` - An optional string slice that holds the expiry date in RFC3339 format.
 /// * `endpoints` - A vector of strings representing the endpoints associated with the key.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// let label = "example_key";
 /// let expiry = Some("2023-12-31T23:59:59Z".to_string());
@@ -53,14 +53,13 @@ pub struct KeyEntry {
 /// generate_auth_keys(label, expiry, endpoints).await;
 /// ```
 pub async fn generate_auth_keys(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
-    let new_key = uuid::Uuid::new_v4().to_string();
-    let pub_key: String = uuid::Uuid::new_v4().to_string();
+    let (priv_key, pub_key) = generate_key_pair();
 
     let expiry_datetime = expiry
         .as_deref()
         .map(|e| DateTime::parse_from_rfc3339(e).expect("Invalid expiry format").with_timezone(&Utc));
-    let hashed_key = hash_key(&new_key);
 
+    let hashed_key = hash_key(&priv_key);
     let key_entry = KeyEntry {
         label: label.to_string(),
         pub_key: pub_key.to_string(),
@@ -74,33 +73,48 @@ pub async fn generate_auth_keys(label: &str, expiry: Option<String>, endpoints: 
     save_keys(&keys).await;
 
     println!("Generated Public Key: {}", pub_key);
-    println!("Generated Private Key: {}", new_key);
+    println!("Generated Private Key: {}", priv_key);
 
     println!("API key added to keys.json");
 }
 
+/// Generates a pair of private and public keys.
+///
+/// # Returns
+///
+/// A tuple containing the private key and the public key as `String`s.
 fn generate_key_pair() -> (String, String) {
     (generate_priv_key(), generate_pub_key())
 }
 
+/// Generates a new private key.
+///
+/// # Returns
+///
+/// A `String` representing the newly generated private key.
 fn generate_priv_key() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
+/// Generates a new public key.
+///
+/// # Returns
+///
+/// A `String` representing the newly generated public key.
 fn generate_pub_key() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
 /// Hashes a given key using Argon2.
-/// 
+///
 /// Important: The random Salt works because Argon2 stores the salt in the hash output.
 ///
 /// # Arguments
 ///
 /// * `key` - The key to be hashed.
-/// 
+///
 /// # Returns
-/// 
+///
 /// A `String` representing the hashed key.
 ///
 fn hash_key(key: &str) -> String {
@@ -117,7 +131,7 @@ fn hash_key(key: &str) -> String {
 /// # Arguments
 ///
 /// * `keys` - A reference to a vector of `KeyEntry` objects.
-/// * `pub_key` - The public key to check. 
+/// * `pub_key` - The public key to check.
 ///
 /// # Returns
 ///
@@ -140,7 +154,7 @@ pub async fn key_exists(keys: Arc<Vec<KeyEntry>>, pub_key: String) -> bool {
 /// * `pub_key` - The public key to check.
 ///
 /// # Returns
-/// 
+///
 /// A `bool` indicating whether the key is unexpired.
 ///
 pub async fn key_is_unexpired(keys: Arc<Vec<KeyEntry>>, pub_key: String) -> bool {
