@@ -8,6 +8,9 @@
 use std::sync::Arc;
 
 use hyper::{Request, Client, Response, Body};
+use hyper::client::HttpConnector;
+
+
 use uuid::Uuid;
 
 use crate::config::{Config, EndpointConfig};
@@ -43,12 +46,11 @@ impl DeckardLLMv1 {
     /// # Examples
     ///
     /// ```
-    /// let response = deckard_llmv1.handle_request(req, client, endpoint, config, request_id, addr).await?;
+    /// let response = deckard_llmv1.handle_request(req, endpoint, config, request_id, addr).await?;
     /// ```
     pub async fn handle_request(
         &self,
         req: Request<Body>,
-        client: Client<hyper::client::HttpConnector>,
         endpoint: &EndpointConfig,
         config: Arc<Config>,
         request_id: Uuid,
@@ -57,14 +59,20 @@ impl DeckardLLMv1 {
     ) -> Result<Response<Body>, hyper::Error> {
         let config_clone = config.clone();
 
+        // Depending on the endpoint url, we may need to build this as http or https.
+        let connector = HttpConnector::new();
+        let client = Client::builder()
+            .http2_adaptive_window(true)
+            .build(connector);
+
         // @SEE This mess, as well as the dozen other times this appears in the codebase, is because the request cannot be cloned.
         // We have to extract the data we need from the request, then reconstruct the request.
-        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone()).await;
+        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
 
         // Check request data for required fields.
         let (is_valid, reason) = self.check_request_metadata(request_metadata).await;
 
-        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone()).await;
+        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
         if !is_valid {
             let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
 
@@ -97,7 +105,7 @@ impl DeckardLLMv1 {
         let body_json: serde_json::Value = serde_json::from_str(&request_metadata.body).unwrap();
         let query_string = body_json["query"].as_str().unwrap().to_string();
 
-        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone()).await;
+        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
         let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
 
         tokio::spawn(async move {
@@ -118,9 +126,11 @@ impl DeckardLLMv1 {
         });
 
         // Build the proxied request.
-        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone()).await;
+        let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), true).await;
         let mut proxied_request = Request::builder()
             .method(request_metadata.method.clone())
+            .header("content-type", "application/json")
+            .header("user-agent", "DeckardLLMv1")
             .uri(endpoint.url.clone())
             .body(req.into_body())
             .expect("Failed to build request");

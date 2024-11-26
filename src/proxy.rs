@@ -10,8 +10,7 @@
 
 use std::sync::Arc;
 
-use hyper::{Body, Client, Request, Response, StatusCode};
-use hyper::client::HttpConnector;
+use hyper::{Body, Request, Response, StatusCode};
 use uuid::Uuid;
 
 use crate::adapters::deckard_llm::DeckardLLMv1;
@@ -35,10 +34,6 @@ use crate::logging::proxy::{log_llm_query, log_llm_query_response};
 /// 
 /// * `Result<Response<Body>, hyper::Error>` - The HTTP response or an error.
 pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: Uuid, addr: String, auth_keys: Arc<Vec<KeyEntry>>, req_time: chrono::DateTime<chrono::Utc>) -> Result<Response<Body>, hyper::Error> {
-    let connector = HttpConnector::new();
-    let client = Client::builder()
-        .http2_adaptive_window(true)
-        .build(connector);
     let path = req.uri().path().to_string();
 
     // Key authentication.
@@ -62,7 +57,8 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
     let adapter = DeckardLLMv1::new();
 
     // Send the request to the upstream server.
-    let response = adapter.handle_request(req, client, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?;
+
+    let response = adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?;
 
     // If the response is an error, return it. The error should be logged at the adapter.
     if response.status().is_server_error() {
@@ -145,7 +141,7 @@ async fn postprocess_response(res: Response<Body>) -> Response<Body> {
 ///
 /// * `Result<(Request<Body>, ()), Response<Body>>` - The request if access is granted, or a forbidden response.
 async fn check_key_access(keys: Arc<Vec<KeyEntry>>, req: Request<Body>, path: &str, config: Arc<Config>, request_id: Uuid, addr: String, req_time: chrono::DateTime<chrono::Utc>) -> Result<(Request<Body>, ()), Response<Body>> {
-    let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone()).await;
+    let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
     let auth_failure_message = &config.clone().messages.auth_failure; // Update to use auth_failure
     let mut key_fail_message = "";
     let pub_key = request_metadata.pub_key.clone().unwrap_or_default();

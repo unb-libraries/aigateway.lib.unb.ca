@@ -72,8 +72,8 @@ impl RequestMetadata {
     /// ```
     /// let (metadata, req) = RequestMetadata::from_request(request).await;
     /// ```
-    pub async fn from_request(req: Request<Body>, addr: String) -> (Self, Request<Body>) {
-        let (parts, body) = req.into_parts();
+    pub async fn from_request(req: Request<Body>, addr: String, strip_auth: bool) -> (Self, Request<Body>) {
+        let (mut parts, body) = req.into_parts();
         let body_bytes = hyper::body::to_bytes(body).await.unwrap();
         let req_body = String::from_utf8(body_bytes.to_vec()).unwrap();
         
@@ -88,6 +88,12 @@ impl RequestMetadata {
         let req_headers = parts.headers.clone();
         let client_ip_address = parts.headers.get("x-forwarded-for").cloned().unwrap_or_else(|| HeaderValue::from_str(&addr).unwrap());
         
+        // Strip the auth header if specified.
+        if strip_auth {
+            parts.headers.remove("x-api-key");
+            parts.headers.remove("x-pub-key");
+        }
+
         let req_clone = Request::from_parts(parts, Body::from(body_bytes.clone()));
 
         let metadata = RequestMetadata {

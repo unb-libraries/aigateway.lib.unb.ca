@@ -4,7 +4,7 @@
     "endpoints": {
       "/api/v2": {
           "adapter": "deckard_llm_v1",
-          "url": "http://lib.unb.ca"
+          "url": "http://0960fddf-83b3-40f0-8d3c-1d4e183181e4.mock.pstmn.io/rag"
       }
     },
     "logging": "newrelic",
