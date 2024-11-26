@@ -50,9 +50,9 @@ pub struct KeyEntry {
 /// let label = "example_key";
 /// let expiry = Some("2023-12-31T23:59:59Z".to_string());
 /// let endpoints = vec!["/api/v1/resource".to_string()];
-/// generate_auth_keys(label, expiry, endpoints).await;
+/// add_auth_key(label, expiry, endpoints).await;
 /// ```
-pub async fn generate_auth_keys(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
+pub async fn add_auth_key(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
     let (priv_key, pub_key) = generate_key_pair();
 
     let expiry_datetime = expiry
@@ -76,6 +76,18 @@ pub async fn generate_auth_keys(label: &str, expiry: Option<String>, endpoints: 
     println!("Generated Private Key: {}", priv_key);
 
     println!("API key added to keys.json");
+}
+
+/// Removes an API key from the keys file.
+///
+/// # Arguments
+///
+/// * `label` - A string slice that holds the label for the key.
+///
+pub async fn remove_auth_key(label: &str) {
+    let mut keys = load_keys().await;
+    keys.retain(|k| k.label != label);
+    save_keys(&keys).await;
 }
 
 /// Generates a pair of private and public keys.
@@ -263,18 +275,15 @@ async fn save_keys(keys: &[KeyEntry]) {
 mod tests {
     use super::*;
 
+    const TEST_LABEL : &str = "test_label";
+    const TEST_EXPIRY : &str = "2023-12-31T23:59:59Z";
+
     #[test]
     fn test_hash_key() {
         let key = "test_key";
         let hashed_key = hash_key(key);
-
-        // Ensure the hashed key is not empty
         assert!(!hashed_key.is_empty());
-
-        // Verify the hashed key can be parsed
         let parsed_hash = PasswordHash::new(&hashed_key).expect("Failed to parse hashed key");
-
-        // Verify the hashed key matches the original key
         assert!(Argon2::default()
             .verify_password(key.as_bytes(), &parsed_hash)
             .is_ok());
@@ -284,30 +293,108 @@ mod tests {
     fn test_hash_key_different_inputs() {
         let key1 = "test_key_1";
         let key2 = "test_key_2";
-
         let hashed_key1 = hash_key(key1);
         let hashed_key2 = hash_key(key2);
-
-        // Ensure the hashed keys are not empty
         assert!(!hashed_key1.is_empty());
         assert!(!hashed_key2.is_empty());
-
-        // Ensure the hashed keys are different
         assert_ne!(hashed_key1, hashed_key2);
     }
 
     #[test]
     fn test_hash_key_same_input() {
         let key = "test_key";
-
         let hashed_key1 = hash_key(key);
         let hashed_key2 = hash_key(key);
-
-        // Ensure the hashed keys are not empty
         assert!(!hashed_key1.is_empty());
         assert!(!hashed_key2.is_empty());
-
-        // Ensure the hashed keys are different due to random salt
         assert_ne!(hashed_key1, hashed_key2);
+    }
+
+    #[test]
+    fn test_hash_key_special_characters() {
+        let key = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
+        let hashed_key = hash_key(key);
+        assert!(!hashed_key.is_empty());
+        let parsed_hash = PasswordHash::new(&hashed_key).expect("Failed to parse hashed key");
+        assert!(Argon2::default()
+            .verify_password(key.as_bytes(), &parsed_hash)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_generate_key_pair() {
+        let (priv_key, pub_key) = generate_key_pair();
+        assert!(!priv_key.is_empty());
+        assert!(!pub_key.is_empty());
+        assert_ne!(priv_key, pub_key);
+    }
+
+    #[tokio::test]
+    async fn test_add_auth_key() {
+        let label = "test_label";
+        let expiry = Some("2023-12-31T23:59:59Z".to_string());
+        let endpoints = vec!["/api/v1/resource".to_string()];
+        add_auth_key(label, expiry, endpoints).await;
+        let keys = load_keys().await;
+        let key_entry = keys.iter().find(|k| k.label == label).expect("Key entry not found");
+        assert_eq!(key_entry.label, label);
+        assert_eq!(key_entry.expiry.unwrap().to_rfc3339(), "2023-12-31T23:59:59+00:00");
+        assert_eq!(key_entry.endpoints, vec!["/api/v1/resource".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn test_remove_auth_key() {
+        let label = "test_label";
+        let expiry = Some("2023-12-31T23:59:59Z".to_string());
+        let endpoints = vec!["/api/v1/resource".to_string()];
+        add_auth_key(label, expiry, endpoints).await;
+        remove_auth_key(label).await;
+        let keys = load_keys().await;
+        let key_entry = keys.iter().find(|k| k.label == label);
+        assert!(key_entry.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_key_exists() {
+        let label = "test_label";
+        let expiry = Some("2023-12-31T23:59:59Z".to_string());
+        let endpoints = vec!["/api/v1/resource".to_string()];
+        add_auth_key(label, expiry, endpoints).await;
+        let keys = Arc::new(load_keys().await);
+        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
+        assert!(key_exists(keys.clone(), pub_key.clone()).await);
+        assert!(!key_exists(keys, "non_existent_key".to_string()).await);
+    }
+
+    #[tokio::test]
+    async fn test_key_is_unexpired() {
+        let label = "test_label";
+        let expiry = Some((Utc::now() + chrono::Duration::days(1)).to_rfc3339());
+        let endpoints = vec!["/api/v1/resource".to_string()];
+        add_auth_key(label, expiry, endpoints).await;
+        let keys = Arc::new(load_keys().await);
+        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
+        assert!(key_is_unexpired(keys.clone(), pub_key.clone()).await);
+    }
+
+    #[tokio::test]
+    async fn test_key_is_expired() {
+        let label = "test_label";
+        let expiry = Some((Utc::now() - chrono::Duration::days(1)).to_rfc3339());
+        let endpoints = vec!["/api/v1/resource".to_string()];
+        add_auth_key(label, expiry, endpoints).await;
+        let keys = Arc::new(load_keys().await);
+        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
+        assert!(!key_is_unexpired(keys.clone(), pub_key.clone()).await);
+    }
+
+    #[tokio::test]
+    async fn test_key_no_expiry() {
+        let label = "test_label";
+        let endpoints = vec!["/api/v1/resource".to_string()];
+        add_auth_key(label, None, endpoints).await;
+        let keys = Arc::new(load_keys().await);
+        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
+        assert!(key_is_unexpired(keys.clone(), pub_key.clone()).await);
     }
 }
