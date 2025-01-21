@@ -275,9 +275,6 @@ async fn save_keys(keys: &[KeyEntry]) {
 mod tests {
     use super::*;
 
-    const TEST_LABEL : &str = "test_label";
-    const TEST_EXPIRY : &str = "2023-12-31T23:59:59Z";
-
     #[test]
     fn test_hash_key() {
         let key = "test_key";

@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
+use dialoguer::{Input, MultiSelect, Confirm};
+
 use crate::auth;
 use crate::config::load_config;
-use dialoguer::{Input, MultiSelect, Confirm};
-use std::sync::Arc;
 
 /// Command: Generates a new API key with an optional label and expiry date. Adds it to the configuration file.
 ///

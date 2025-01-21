@@ -5,14 +5,12 @@
 //! - `TyrellLLMv1::new`: Creates a new instance of the TyrellLLMv1 adapter.
 //! - `TyrellLLMv1::handle_request`: Handles an incoming HTTP request with the TyrellLLMv1 adapter.
 //!
-use std::f32::consts::E;
 use std::sync::Arc;
 
 use hyper::{Request, Client, Response, Body};
 use hyper::client::HttpConnector;
-use uuid::Uuid;
-
 use log::{info, error};
+use uuid::Uuid;
 
 use crate::config::{Config, EndpointConfig};
 use crate::client::metadata::RequestMetadata;

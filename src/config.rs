@@ -1,6 +1,6 @@
-//! Configuration module for AI Gateway
-use serde::Deserialize;
 use std::collections::HashMap;
+
+use serde::Deserialize;
 use tokio::fs;
 
 #[derive(Deserialize)]

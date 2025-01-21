@@ -15,7 +15,6 @@ use uuid::Uuid;
 
 use crate::adapters::deckard_llm::DeckardLLMv1;
 use crate::adapters::tyrell::TyrellLLMv1;
-
 use crate::auth::{self, KeyEntry};
 use crate::client::metadata::{RequestMetadata, ResponseMetadata};
 use crate::config::Config;

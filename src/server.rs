@@ -1,6 +1,7 @@
 
-use hyper::{server::conn::AddrStream, service::{make_service_fn, service_fn}, Body, Request, Server};
 use std::sync::Arc;
+
+use hyper::{server::conn::AddrStream, service::{make_service_fn, service_fn}, Body, Request, Server};
 use uuid::Uuid;
 
 use crate::auth::load_keys;

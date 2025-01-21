@@ -4,7 +4,6 @@
 //! Functions:
 //! - `RequestMetadata::from_request`: Extracts metadata from an HTTP request.
 //! - `ResponseMetadata::from_response`: Extracts metadata from an HTTP response.
-
 use hyper::{Body, HeaderMap, Method, Request, Response, StatusCode, Uri};
 use hyper::header::HeaderValue;
 
