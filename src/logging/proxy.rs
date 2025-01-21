@@ -47,7 +47,7 @@ pub async fn log_llm_query(
 ) {
     let is_error = response_is_error(request_status).await;
     let log_msg = format!(
-        "[{}] {} [{}]({}) - Method: {}, URI: {}, Status: {}, Message: {}, Response Time: {}ms",
+        "[{}] {} [{}]({}) - Method: {}, URI: {}, Status: {}, Request: {}, API Route Time: {}ms",
         req_time.timestamp(),
         request_id,
         request_address,
@@ -55,7 +55,7 @@ pub async fn log_llm_query(
         request_method,
         request_uri,
         request_status,
-        message,
+        truncate_request_response_body(message, 128),
         response_time
     );
     if is_error {
@@ -110,13 +110,13 @@ pub async fn log_llm_query_response(
 ) {
     let is_error = response_is_error(response_status).await;
     let log_msg = format!(
-        "[{}] {} [{}]({}) - Status: {}, Message: {}, Response Time: {}ms",
+        "[{}] {} [{}]({}) - Status: {}, Response: {}, Response Time: {}ms",
         req_time.timestamp(),
         request_id,
         request_address,
         request_client_address,
         response_status,
-        message,
+        truncate_request_response_body(message, 128),
         response_time
     );
     if is_error {
@@ -150,4 +150,12 @@ pub async fn log_llm_query_response(
 ///
 async fn response_is_error(response_status: u16) -> bool {
     response_status != 200 && response_status != 308
+}
+
+fn truncate_request_response_body(body: &str, max_length: usize) -> String {
+    if body.len() > max_length {
+        format!("{}...", &body[..max_length])
+    } else {
+        body.to_string()
+    }
 }
