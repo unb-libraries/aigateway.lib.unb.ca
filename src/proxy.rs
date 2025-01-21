@@ -14,6 +14,8 @@ use hyper::{Body, Request, Response, StatusCode};
 use uuid::Uuid;
 
 use crate::adapters::deckard_llm::DeckardLLMv1;
+use crate::adapters::tyrell::TyrellLLMv1;
+
 use crate::auth::{self, KeyEntry};
 use crate::client::metadata::{RequestMetadata, ResponseMetadata};
 use crate::config::Config;
@@ -46,19 +48,21 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
     // Determine the adapter.
     let config_clone = config.clone();
     let endpoint = config_clone.endpoints.get(&path).unwrap();
-    let _adapter_name = endpoint.adapter.as_str();
 
     // Preprocess all requests.
     let req = preprocess_request(req).await;
 
-    // @TODO These should pass through dynamic adapters in the future based on config.
-    // Adapters? Interfaces? Endpoints? Not sure what to call them yet.
-    // For now we'll just manually specify the DeckardLLMv1 adapter.
-    let adapter = DeckardLLMv1::new();
-
-    // Send the request to the upstream server.
-
-    let response = adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?;
+    let response = match endpoint.adapter.as_str() {
+        "deckard_llm_v1" => {
+            let adapter = DeckardLLMv1::new();
+            adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
+        }
+        "tyrell_llm_v1" => {
+            let adapter = TyrellLLMv1::new();
+            adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
+        }
+        _ => panic!("Invalid adapter: {}", endpoint.adapter),
+    };
 
     // If the response is an error, return it. The error should be logged at the adapter.
     if response.status().is_server_error() {

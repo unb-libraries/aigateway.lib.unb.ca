@@ -2,9 +2,13 @@
     "port": 3000,
     "adapter": "127.0.0.1",
     "endpoints": {
-      "/api/v2": {
+      "/deckard/api/v1": {
           "adapter": "deckard_llm_v1",
           "url": "http://0960fddf-83b3-40f0-8d3c-1d4e183181e4.mock.pstmn.io/rag"
+      },
+      "/tyrell/api/v1": {
+        "adapter": "tyrell_llm_v1",
+        "url": "http://0960fddf-83b3-40f0-8d3c-1d4e183181e4.mock.pstmn.io/rag"
       }
     },
     "logging": "newrelic",
