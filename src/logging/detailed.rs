@@ -91,7 +91,7 @@ pub async fn log_llm_request(
             "method": request_method,
             "uri": request_uri,
             "headers": request_headers,
-            "body": request_body,
+            "body": truncate_request_response_body(request_body, 128),
         }
     });
 
@@ -103,6 +103,14 @@ pub async fn log_llm_request(
             return;
         }
         log_to_new_relic(log_data, request_id, &config.license_key).await;
+    }
+}
+
+fn truncate_request_response_body(body: &str, max_length: usize) -> String {
+    if body.len() > max_length {
+        format!("{}...", &body[..max_length])
+    } else {
+        body.to_string()
     }
 }
 
@@ -165,7 +173,7 @@ pub async fn log_llm_request_response(
         "response": {
             "status": response_status,
             "headers": response_headers,
-            "body": response_body,
+            "body": truncate_request_response_body(response_body, 128),
         }
     });
 

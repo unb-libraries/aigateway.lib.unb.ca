@@ -5,11 +5,14 @@
 //! - `TyrellLLMv1::new`: Creates a new instance of the TyrellLLMv1 adapter.
 //! - `TyrellLLMv1::handle_request`: Handles an incoming HTTP request with the TyrellLLMv1 adapter.
 //!
+use std::f32::consts::E;
 use std::sync::Arc;
 
 use hyper::{Request, Client, Response, Body};
 use hyper::client::HttpConnector;
 use uuid::Uuid;
+
+use log::{info, error};
 
 use crate::config::{Config, EndpointConfig};
 use crate::client::metadata::RequestMetadata;
@@ -101,7 +104,7 @@ impl TyrellLLMv1 {
 
         // Get the query string from the request body.
         let body_json: serde_json::Value = serde_json::from_str(&request_metadata.body).unwrap();
-        let query_string = body_json["query"].as_str().unwrap().to_string();
+        let document = body_json["document"].as_str().unwrap().to_string();
 
         let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
         let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
@@ -118,7 +121,7 @@ impl TyrellLLMv1 {
                 format!("{:?}", request_metadata.headers).as_str(),
                 request_metadata.body.as_str(),
                 200,
-                format!("Query: {:?}", query_string).as_str(),
+                format!("Query: {:?}", document).as_str(),
                 &config_clone,
             ).await;
         });
@@ -134,6 +137,7 @@ impl TyrellLLMv1 {
             .expect("Failed to build request");
         *proxied_request.headers_mut() = request_metadata.headers;
 
+        info!("Sending request to upstream server...: {}", endpoint.url.clone());
         // Send the request to the upstream server.
         match client.request(proxied_request).await {
             Ok(response) => {
@@ -143,6 +147,7 @@ impl TyrellLLMv1 {
             }
             Err(err) => {
                 let error_message = format!("Error: {}", err);
+                error!("Error: {}", error_message);
                 let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
 
                 tokio::spawn(async move {
