@@ -6,6 +6,7 @@
 //! - `ResponseMetadata::from_response`: Extracts metadata from an HTTP response.
 use hyper::{Body, HeaderMap, Method, Request, Response, StatusCode, Uri};
 use hyper::header::HeaderValue;
+use serde_json;
 
 /// Metadata describing an HTTP request.
 /// 
@@ -47,6 +48,7 @@ pub struct ResponseMetadata {
     pub ip: String,
     pub client_ip: String,
     pub status: StatusCode,
+    pub response: String,
 }
 
 impl RequestMetadata {
@@ -143,6 +145,12 @@ impl ResponseMetadata {
         let client_ip_address = parts.headers.get("x-forwarded-for").cloned().unwrap_or_else(|| HeaderValue::from_str(&addr).unwrap());
         let res_status = parts.status.clone();
         
+        let body_json: serde_json::Value = match serde_json::from_str(&res_body) {
+            Ok(json) => json,
+            Err(_) => serde_json::Value::Null,
+        };
+        let response = body_json.get("response").unwrap_or(&serde_json::Value::Null);
+
         let req_clone = Response::from_parts(parts, Body::from(body_bytes.clone()));
         
         let metadata = ResponseMetadata {
@@ -151,6 +159,7 @@ impl ResponseMetadata {
             status: res_status,
             ip: addr,
             client_ip: client_ip_address.to_str().unwrap().to_string(),
+            response: response.to_string(),
         };
 
         (metadata, req_clone)

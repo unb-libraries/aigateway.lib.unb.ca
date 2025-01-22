@@ -73,7 +73,6 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
 
     // Finally log the successful response.
     let (response_metadata, response) = ResponseMetadata::from_response(response, addr.clone()).await;
-    let query_response = "Placeholder for query response";
     let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
 
     tokio::spawn(async move {
@@ -86,7 +85,7 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
             format!("{:?}", response_metadata.headers).as_str(),
             response_metadata.body.as_str(),
             response_metadata.status.as_u16(),
-            query_response,
+            response_metadata.response.as_str(),
             &config,
         ).await;
     });
