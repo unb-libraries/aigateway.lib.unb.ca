@@ -14,6 +14,7 @@ use hyper::{Body, Request, Response, StatusCode};
 use uuid::Uuid;
 
 use crate::adapters::deckard_llm::DeckardLLMv1;
+use crate::adapters::sebastian::SebastianLLMv1;
 use crate::adapters::tyrell::TyrellLLMv1;
 use crate::auth::{self, KeyEntry};
 use crate::client::metadata::{RequestMetadata, ResponseMetadata};
@@ -58,6 +59,10 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
         }
         "tyrell_llm_v1" => {
             let adapter = TyrellLLMv1::new();
+            adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
+        }
+        "sebastian_llm_v1" => {
+            let adapter = SebastianLLMv1::new();
             adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
         }
         _ => panic!("Invalid adapter: {}", endpoint.adapter),
