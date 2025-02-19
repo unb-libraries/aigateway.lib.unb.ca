@@ -1,0 +1,53 @@
+dockworker:
+  version: '6'
+  application:
+    name: UNB Libraries AI Gateway
+    uri: https://aigateway.lib.unb.ca
+    description: >
+      An AI Gateway for routing application inference requests to the appropriate endpoints within our infrastructure.
+    topics:
+      - llm
+      - ai
+      - gateway
+    identifiers:
+      id: aigateway.lib.unb.ca
+      slug: aigateway-lib-unb-ca
+      short_slug: aigateway
+      uuid: 3513
+    framework:
+      name: Rust
+      version: 7
+      startup_finished_marker: 'Ready to accept connections'
+      endpoint:
+        name: http
+        port: 3000
+        readiness_timeout: 15
+    license:
+      license: MIT
+      holder: University of New Brunswick Libraries
+    shell:
+      path: /bin/sh
+  endpoints:
+    env:
+      - dev
+      - prod
+    deployments:
+      aigateway-lib-unb-ca:
+        default: true
+        managed: true
+        name: aigateway-lib-unb-ca
+  workflows:
+    vcs:
+      type: github
+      owner: unb-libraries
+      name: aigateway.lib.unb.ca
+    jira:
+      project_keys:
+        - AILLM
+    image:
+      name: ghcr.io/unb-libraries/aigateway.lib.unb.ca
+      parent: ghcr.io/unb-libraries/base:3.x
+      repository: GitHub
+      push-branches:
+        - dev
+        - prod

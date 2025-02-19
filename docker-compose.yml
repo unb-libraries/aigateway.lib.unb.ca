@@ -1,0 +1,12 @@
+services:
+  aigateway-lib-unb-ca:
+    build:
+      context: .
+    restart: unless-stopped
+    container_name: aigateway-lib-unb-ca
+    expose:
+      - "3000"
+    ports:
+      - "3513:3000"
+    volumes:
+      - ./data:/app/data

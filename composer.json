@@ -1,0 +1,29 @@
+{
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "php-http/discovery": true
+    },
+    "preferred-install": {
+      "*": "dist"
+    }
+  },
+  "description": "Scaffold and provision local development for aigateway.lib.unb.ca",
+  "license": "MIT",
+  "minimum-stability": "dev",
+  "name": "unb-libraries/aigateway.lib.unb.ca",
+  "prefer-stable": true,
+  "require-dev": {
+    "unb-libraries/dockworker-daemon": "^6"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dockworker\\": ".dockworker/src"
+    }
+  },
+  "scripts": {
+    "post-update-cmd": [
+      "vendor/bin/dockworker git:setup-hooks"
+    ]
+  }
+}
