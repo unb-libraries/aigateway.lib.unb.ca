@@ -27,3 +27,6 @@
 data/config.json
 data/keys.json
 
+# Dockworker
+vendor
+composer.lock
