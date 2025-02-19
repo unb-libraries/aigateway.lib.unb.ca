@@ -64,5 +64,5 @@ pub async fn generate_key(label: Option<String>, expiry: Option<String>) {
 
     let endpoints: Vec<String> = endpoints.iter().map(|&i| items[i].to_string()).collect();
 
-    auth::add_auth_key(&label, expiry, endpoints).await;
+    auth::generate_key_default(&label, expiry, endpoints).await;
 }

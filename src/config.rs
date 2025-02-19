@@ -35,8 +35,9 @@ pub struct MessagesConfig {
 /// This function will panic if the `config.json` file cannot be read or if the
 /// contents cannot be parsed into a `Config` struct.
 pub async fn load_config() -> Config {
-    let contents = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/data/config.json"))
+    let contents_file_path = concat!(env!("CARGO_MANIFEST_DIR"), "/data/config.json");
+    let contents = fs::read_to_string(contents_file_path)
         .await
-        .expect("Failed to read config.json");
-    serde_json::from_str(&contents).expect("Failed to parse config.json")
+        .expect(format!("Error: Failed to read {}", contents_file_path).as_str());
+    serde_json::from_str(&contents).expect(format!("Error: Failed to parse {}", contents_file_path).as_str())
 }

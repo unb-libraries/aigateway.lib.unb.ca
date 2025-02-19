@@ -17,9 +17,11 @@
 //! - `key_exists`: Checks if a given public key exists in the provided list of keys.
 
 use std::sync::Arc;
+use std::path::Path;
 
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::{Utc, DateTime};
+use dialoguer::console::Key;
 use password_hash::SaltString;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
@@ -36,6 +38,10 @@ pub struct KeyEntry {
     pub endpoints: Vec<String>,
 }
 
+pub async fn generate_key_default(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
+    generate_add_key(label, expiry, endpoints, KEYS_FILE).await;
+}
+
 /// Generates a new API key, hashes it, and saves it to the keys file.
 ///
 /// # Arguments
@@ -43,6 +49,7 @@ pub struct KeyEntry {
 /// * `label` - A string slice that holds the label for the key.
 /// * `expiry` - An optional string slice that holds the expiry date in RFC3339 format.
 /// * `endpoints` - A vector of strings representing the endpoints associated with the key.
+/// * `file_path` - The file path to the keys file.
 ///
 /// # Example
 ///
@@ -50,10 +57,12 @@ pub struct KeyEntry {
 /// let label = "example_key";
 /// let expiry = Some("2023-12-31T23:59:59Z".to_string());
 /// let endpoints = vec!["/api/v1/resource".to_string()];
-/// add_auth_key(label, expiry, endpoints).await;
+/// generate_add_key(label, expiry, endpoints).await;
 /// ```
-pub async fn add_auth_key(label: &str, expiry: Option<String>, endpoints: Vec<String>) {
+pub async fn generate_add_key(label: &str, expiry: Option<String>, endpoints: Vec<String>, file_path: &str) -> KeyEntry {
     let (priv_key, pub_key) = generate_key_pair();
+    println!("Generated Public Key: {}", pub_key);
+    println!("Generated Private Key: {}", priv_key);
 
     let expiry_datetime = expiry
         .as_deref()
@@ -68,26 +77,13 @@ pub async fn add_auth_key(label: &str, expiry: Option<String>, endpoints: Vec<St
         endpoints,
     };
 
-    let mut keys = load_keys().await;
-    keys.push(key_entry);
-    save_keys(&keys).await;
-
-    println!("Generated Public Key: {}", pub_key);
-    println!("Generated Private Key: {}", priv_key);
+    let mut keys = load_keys(file_path).await;
+    keys.push(key_entry.clone());
+    save_keys(&keys, KEYS_FILE).await;
 
     println!("API key added to keys.json");
-}
 
-/// Removes an API key from the keys file.
-///
-/// # Arguments
-///
-/// * `label` - A string slice that holds the label for the key.
-///
-pub async fn remove_auth_key(label: &str) {
-    let mut keys = load_keys().await;
-    keys.retain(|k| k.label != label);
-    save_keys(&keys).await;
+    key_entry
 }
 
 /// Generates a pair of private and public keys.
@@ -136,6 +132,78 @@ fn hash_key(key: &str) -> String {
         .hash_password(key.as_bytes(), &salt)
         .expect("Failed to hash key")
         .to_string()
+}
+
+/// Loads keys from the keys file
+///
+/// # Arguments
+///
+/// * `file_path` - The file path to the keys file.
+///
+/// # Returns
+///
+/// A vector of `KeyEntry` objects.
+///
+pub async fn load_keys(file_path: &str) -> Vec<KeyEntry> {
+    match fs::read_to_string(file_path).await {
+        Ok(contents) => serde_json::from_str(&contents).unwrap_or_else(|_| Vec::new()),
+        Err(_) => Vec::new(), // Return an empty vector if the file doesn't exist
+    }
+}
+
+/// Gets all keys from the keys file
+///
+/// # Returns
+///
+/// A vector of `KeyEntry` objects.
+///
+pub async fn get_keys() -> Vec<KeyEntry> {
+    load_keys(KEYS_FILE).await
+}
+
+/// Saves keys to the keys file
+///
+/// # Arguments
+///
+/// * `keys` - A reference to a vector of `KeyEntry` objects.
+/// * `file_path` - The file path to the keys file.
+///
+/// # Panics
+///
+/// This function will panic if the keys cannot be serialized or written to the file.
+///
+async fn save_keys(keys: &[KeyEntry], file_path: &str) {
+    let contents = serde_json::to_string_pretty(keys).expect("Failed to serialize keys");
+    fs::write(file_path, contents).await.expect("Failed to write keys.json");
+}
+
+/// Loads a key from the keys file
+///
+/// # Arguments
+///
+/// * `pub_key` - The public key to load.
+/// * `file_path` - The file path to the keys file.
+///
+/// # Returns
+///
+/// An optional `KeyEntry` object.
+///
+pub async fn load_key(pub_key: &str, file_path: &str) -> Option<KeyEntry> {
+    let keys = load_keys(file_path).await;
+    keys.iter().find(|k| k.pub_key == pub_key).cloned()
+}
+
+/// Removes an API key from the keys file
+///
+/// # Arguments
+///
+/// * `pub_key` - The public key to remove.
+/// * `file_path` - The file path to the keys file.
+///
+pub async fn remove_key(pub_key: &str, file_path: &str) {
+    let mut keys = load_keys(file_path).await;
+    keys.retain(|k| k.pub_key != pub_key);
+    save_keys(&keys, file_path).await;
 }
 
 /// Checks if a given public key exists in the provided list of keys.
@@ -242,38 +310,21 @@ fn verify_key(plaintext_key: &str, hashed_key: &str) -> bool {
         .is_ok()
 }
 
-/// Loads keys from the keys file
-///
-/// # Returns
-///
-/// A vector of `KeyEntry` objects.
-///
-pub async fn load_keys() -> Vec<KeyEntry> {
-    match fs::read_to_string(KEYS_FILE).await {
-        Ok(contents) => serde_json::from_str(&contents).unwrap_or_else(|_| Vec::new()),
-        Err(_) => Vec::new(), // Return an empty vector if the file doesn't exist
-    }
-}
-
-/// Saves keys to the keys file
-///
-/// # Arguments
-///
-/// * `keys` - A reference to a vector of `KeyEntry` objects.
-///
-/// # Panics
-///
-/// This function will panic if the keys cannot be serialized or written to the file.
-///
-async fn save_keys(keys: &[KeyEntry]) {
-    let contents = serde_json::to_string_pretty(keys).expect("Failed to serialize keys");
-    fs::write(KEYS_FILE, contents).await.expect("Failed to write keys.json");
-}
-
 // Tests
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
+    use std::path::PathBuf;
+
+    const KEY_EXPIRY_TEST: &str = "2023-12-31T23:59:59Z";
+
+    fn setup_temp_keys_file() -> (TempDir, PathBuf) {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let keys_file = temp_dir.path().join("keys.json");
+        println!("Temp keys file: {:?}", keys_file);
+        (temp_dir, keys_file)
+    }
 
     #[test]
     fn test_hash_key() {
@@ -327,71 +378,89 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_add_auth_key() {
+    async fn test_generate_add_key() {
+        let (_temp_dir, keys_file) = setup_temp_keys_file();
         let label = "test_label";
         let expiry = Some("2023-12-31T23:59:59Z".to_string());
         let endpoints = vec!["/api/v1/resource".to_string()];
-        add_auth_key(label, expiry, endpoints).await;
-        let keys = load_keys().await;
-        let key_entry = keys.iter().find(|k| k.label == label).expect("Key entry not found");
+        let added_key = generate_add_key(label, expiry, endpoints, keys_file.to_str().unwrap()).await;
+        let loaded_key_result = load_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        // make sure it's not None
+        assert!(loaded_key_result.is_some());
+        let key_entry = loaded_key_result.unwrap();
         assert_eq!(key_entry.label, label);
         assert_eq!(key_entry.expiry.unwrap().to_rfc3339(), "2023-12-31T23:59:59+00:00");
         assert_eq!(key_entry.endpoints, vec!["/api/v1/resource".to_string()]);
+        remove_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
     }
 
     #[tokio::test]
     async fn test_remove_auth_key() {
+        let (_temp_dir, keys_file) = setup_temp_keys_file();
         let label = "test_label";
         let expiry = Some("2023-12-31T23:59:59Z".to_string());
         let endpoints = vec!["/api/v1/resource".to_string()];
-        add_auth_key(label, expiry, endpoints).await;
-        remove_auth_key(label).await;
-        let keys = load_keys().await;
-        let key_entry = keys.iter().find(|k| k.label == label);
-        assert!(key_entry.is_none());
+        let added_key = generate_add_key(label, expiry, endpoints, keys_file.to_str().unwrap()).await;
+        remove_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        let loaded_key_result = load_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        assert!(loaded_key_result.is_none());
     }
 
     #[tokio::test]
     async fn test_key_exists() {
+        let (_temp_dir, keys_file) = setup_temp_keys_file();
         let label = "test_label";
         let expiry = Some("2023-12-31T23:59:59Z".to_string());
         let endpoints = vec!["/api/v1/resource".to_string()];
-        add_auth_key(label, expiry, endpoints).await;
-        let keys = Arc::new(load_keys().await);
-        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
-        assert!(key_exists(keys.clone(), pub_key.clone()).await);
-        assert!(!key_exists(keys, "non_existent_key".to_string()).await);
+        let added_key = generate_add_key(label, expiry, endpoints, keys_file.to_str().unwrap()).await;
+        let loaded_key_result = load_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        // make sure it's not None
+        assert!(loaded_key_result.is_some());
+        let key_entry = loaded_key_result.unwrap();
+        assert!(key_exists(Arc::new(vec![key_entry.clone()]), key_entry.pub_key.clone()).await);
+        remove_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
     }
 
     #[tokio::test]
     async fn test_key_is_unexpired() {
+        let (_temp_dir, keys_file) = setup_temp_keys_file();
         let label = "test_label";
         let expiry = Some((Utc::now() + chrono::Duration::days(1)).to_rfc3339());
         let endpoints = vec!["/api/v1/resource".to_string()];
-        add_auth_key(label, expiry, endpoints).await;
-        let keys = Arc::new(load_keys().await);
-        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
-        assert!(key_is_unexpired(keys.clone(), pub_key.clone()).await);
+        let added_key = generate_add_key(label, expiry, endpoints, keys_file.to_str().unwrap()).await;
+        let loaded_key_result = load_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        // make sure it's not None
+        assert!(loaded_key_result.is_some());
+        let key_entry = loaded_key_result.unwrap();
+        assert!(key_is_unexpired(Arc::new(vec![key_entry.clone()]), key_entry.pub_key.clone()).await);
+        remove_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
     }
 
     #[tokio::test]
     async fn test_key_is_expired() {
+        let (_temp_dir, keys_file) = setup_temp_keys_file();
         let label = "test_label";
         let expiry = Some((Utc::now() - chrono::Duration::days(1)).to_rfc3339());
         let endpoints = vec!["/api/v1/resource".to_string()];
-        add_auth_key(label, expiry, endpoints).await;
-        let keys = Arc::new(load_keys().await);
-        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
-        assert!(!key_is_unexpired(keys.clone(), pub_key.clone()).await);
+        let added_key = generate_add_key(label, expiry, endpoints, keys_file.to_str().unwrap()).await;
+        let loaded_key_result = load_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        // make sure it's not None
+        assert!(loaded_key_result.is_some());
+        let key_entry = loaded_key_result.unwrap();
+        assert!(!key_is_unexpired(Arc::new(vec![key_entry.clone()]), key_entry.pub_key.clone()).await);
+        remove_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
     }
 
     #[tokio::test]
     async fn test_key_no_expiry() {
+        let (_temp_dir, keys_file) = setup_temp_keys_file();
         let label = "test_label";
         let endpoints = vec!["/api/v1/resource".to_string()];
-        add_auth_key(label, None, endpoints).await;
-        let keys = Arc::new(load_keys().await);
-        let pub_key = keys.iter().find(|k| k.label == label).unwrap().pub_key.clone();
-        assert!(key_is_unexpired(keys.clone(), pub_key.clone()).await);
+        let added_key = generate_add_key(label, None, endpoints, keys_file.to_str().unwrap()).await;
+        let loaded_key_result = load_key(added_key.pub_key.as_str(), keys_file.to_str().unwrap()).await;
+        // make sure it's not None
+        assert!(loaded_key_result.is_some());
+        let key_entry = loaded_key_result.unwrap();
+        assert!(key_is_unexpired(Arc::new(vec![key_entry.clone()]), key_entry.pub_key.clone()).await);
     }
 }

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use hyper::{server::conn::AddrStream, service::{make_service_fn, service_fn}, Body, Request, Server};
 use uuid::Uuid;
 
-use crate::auth::load_keys;
+use crate::auth::get_keys;
 use crate::config::load_config;
 
 /// Starts the gateway.
@@ -21,7 +21,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error>> {
     let config = Arc::new(load_config().await);
     let server_config = Arc::clone(&config);
 
-    let keys = Arc::new(load_keys().await);
+    let keys = Arc::new(get_keys().await);
     let key_config = Arc::clone(&keys);
 
     let make_svc = make_service_fn(move |conn: &AddrStream| {

@@ -9,8 +9,6 @@ use std::sync::Arc;
 
 use hyper::{Request, Client, Response, Body};
 use hyper::client::HttpConnector;
-
-
 use uuid::Uuid;
 
 use crate::config::{Config, EndpointConfig};
