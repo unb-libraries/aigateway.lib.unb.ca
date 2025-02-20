@@ -14,7 +14,7 @@ COPY Cargo.toml Cargo.lock ./
 # Build and cache the dependencies
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo fetch
-RUN cargo build --release
+RUN cargo build --release --bin aigateway_lib_unb_ca
 RUN rm src/main.rs
 
 # Copy the actual code files and build the application
