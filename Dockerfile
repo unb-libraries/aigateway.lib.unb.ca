@@ -21,7 +21,7 @@ RUN rm src/main.rs
 COPY src ./src/
 # Update the file date
 RUN touch src/main.rs
-RUN cargo build --release
+RUN cargo build --release --bin aigateway_lib_unb_ca
 
 
 FROM ghcr.io/unb-libraries/base:3.x
