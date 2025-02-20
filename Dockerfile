@@ -1,26 +1,24 @@
-FROM clux/muslrust:stable AS chef
-USER root
-RUN cargo install cargo-chef
-WORKDIR /app
+FROM rust:alpine AS builder
 
+ARG BUILD_DIR=/tmp
 
-FROM chef AS planner
-COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+RUN set -x && \
+  apk add --no-cache musl-dev openssl-dev
 
-FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+COPY ./ ${BUILD_DIR}
 
-RUN rustup target add x86_64-unknown-linux-musl && \
-  cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
-COPY . .
-RUN cargo build --release --target x86_64-unknown-linux-musl --bin aigateway_lib_unb_ca
+RUN set -x && \
+  cd ${BUILD_DIR} && \
+  cargo build --release && \
+  find ${BUILD_DIR}/target
 
 
 FROM ghcr.io/unb-libraries/base:3.x
 
+RUN apk add --no-cache libgcc
 ENV APP_STARTUP_CMD="/app/gateway start-server"
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/aigateway_lib_unb_ca /app/gateway
+COPY --from=builder /tmp/target/release/aigateway_lib_unb_ca /app/gateway
 
 LABEL ca.unb.lib.generator="gateway" \
   com.microscaling.docker.dockerfile="/Dockerfile" \
