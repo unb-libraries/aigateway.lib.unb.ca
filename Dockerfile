@@ -1,24 +1,34 @@
 FROM rust:alpine AS builder
 
-ARG BUILD_DIR=/tmp
-
-RUN set -x && \
-  apk add --no-cache musl-dev openssl-dev
-
 ENV RUSTFLAGS="-C target-feature=-crt-static"
-COPY ./ ${BUILD_DIR}
 
-RUN set -x && \
-  cd ${BUILD_DIR} && \
-  cargo build --release && \
-  find ${BUILD_DIR}/target
+# Install build dependencies
+RUN apk add --no-cache build-base musl-dev openssl-dev openssl
+
+# Create a new empty shell project
+WORKDIR /app
+
+# Copy over the Cargo.toml files to the shell project
+COPY Cargo.toml Cargo.lock ./
+
+# Build and cache the dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo fetch
+RUN cargo build --release
+RUN rm src/main.rs
+
+# Copy the actual code files and build the application
+COPY src ./src/
+# Update the file date
+RUN touch src/main.rs
+RUN cargo build --release
 
 
 FROM ghcr.io/unb-libraries/base:3.x
 
 RUN apk add --no-cache libgcc
 ENV APP_STARTUP_CMD="/app/gateway start-server"
-COPY --from=builder /tmp/target/release/aigateway_lib_unb_ca /app/gateway
+COPY --from=builder /app/target/release/aigateway_lib_unb_ca /app/gateway
 
 LABEL ca.unb.lib.generator="gateway" \
   com.microscaling.docker.dockerfile="/Dockerfile" \
