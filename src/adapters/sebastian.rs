@@ -74,7 +74,7 @@ impl SebastianLLMv1 {
         let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
         if !is_valid {
             let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
-
+            let log_reason = reason.clone().unwrap();
             tokio::spawn(async move {
                 log_llm_query(
                     request_id.clone(),
@@ -87,12 +87,12 @@ impl SebastianLLMv1 {
                     format!("{:?}", request_metadata.headers).as_str(),
                     request_metadata.body.as_str(),
                     400,
-                    format!("Request metadata is invalid: {:?}", reason).as_str(),
+                    format!("Request metadata is invalid: {:?}", log_reason).as_str(),
                     &config,
                 ).await;
             });
             // Construct a response with a malformed status code.
-            let mut response = Response::new(Body::from("Bad request"));
+            let mut response = Response::new(Body::from(format!("Bad request: {}", reason.unwrap())));
             *response.status_mut() = hyper::StatusCode::BAD_REQUEST;
             return Ok(response);
         }

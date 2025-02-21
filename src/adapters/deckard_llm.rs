@@ -73,7 +73,7 @@ impl DeckardLLMv1 {
         let (request_metadata, req) = RequestMetadata::from_request(req, addr.clone(), false).await;
         if !is_valid {
             let response_time = chrono::Utc::now().signed_duration_since(req_time).num_milliseconds();
-
+            let log_reason = reason.clone().unwrap();
             tokio::spawn(async move {
                 log_llm_query(
                     request_id.clone(),
@@ -86,12 +86,12 @@ impl DeckardLLMv1 {
                     format!("{:?}", request_metadata.headers).as_str(),
                     request_metadata.body.as_str(),
                     400,
-                    format!("Request metadata is invalid: {:?}", reason).as_str(),
+                    format!("Request metadata is invalid: {:?}", log_reason).as_str(),
                     &config,
                 ).await;
             });
             // Construct a response with a malformed status code.
-            let mut response = Response::new(Body::from("Bad request"));
+            let mut response = Response::new(Body::from(format!("Bad request: {}", reason.unwrap())));
             *response.status_mut() = hyper::StatusCode::BAD_REQUEST;
             return Ok(response);
         }
@@ -241,6 +241,10 @@ impl DeckardLLMv1 {
         // Check that body_json contains a 'query' value
         if !body_json.as_object().unwrap().contains_key("query") {
             return (false, Some("Request body does not contain 'query' key".to_string()));
+        }
+
+        if !body_json.as_object().unwrap().contains_key("pipeline") {
+            return (false, Some("Request body does not contain 'pipeline' key".to_string()));
         }
 
         (true, None)
