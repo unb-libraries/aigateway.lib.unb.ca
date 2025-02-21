@@ -36,6 +36,13 @@ use crate::logging::proxy::{log_llm_query, log_llm_query_response};
 /// 
 /// * `Result<Response<Body>, hyper::Error>` - The HTTP response or an error.
 pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: Uuid, addr: String, auth_keys: Arc<Vec<KeyEntry>>, req_time: chrono::DateTime<chrono::Utc>) -> Result<Response<Body>, hyper::Error> {
+    if req.uri().path() == "/health" {
+        return Ok(Response::builder()
+        .status(hyper::StatusCode::OK)
+        .body(Body::from("OK"))
+        .unwrap())
+    }
+
     let path = req.uri().path().to_string();
 
     // Key authentication.
