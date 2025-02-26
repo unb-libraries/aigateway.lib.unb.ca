@@ -165,7 +165,7 @@ pub async fn log_llm_request_response(
         "response": {
             "status": response_status,
             "headers": response_headers,
-            "body": response_body,
+            "body": json!(response_body),
         }
     });
 
