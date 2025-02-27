@@ -17,11 +17,9 @@
 //! - `key_exists`: Checks if a given public key exists in the provided list of keys.
 
 use std::sync::Arc;
-use std::path::Path;
 
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::{Utc, DateTime};
-use dialoguer::console::Key;
 use password_hash::SaltString;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};

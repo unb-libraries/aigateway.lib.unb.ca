@@ -1,7 +1,7 @@
 //! # Proxy Module
-//! 
+//!
 //! This module handles proxying incoming HTTP requests to the appropriate upstream server.
-//! 
+//!
 //! ## Functions
 //! - `proxy_request`: Proxies the incoming request to the appropriate upstream server.
 //! - `check_key_access`: Checks if the provided keys have access to the requested resource.
@@ -22,18 +22,18 @@ use crate::config::Config;
 use crate::logging::proxy::{log_llm_query, log_llm_query_response};
 
 /// Proxies the incoming request to the appropriate upstream server.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `req` - The incoming HTTP request.
 /// * `config` - Shared configuration settings.
 /// * `request_id` - Unique identifier for the request.
 /// * `addr` - Client's IP address.
 /// * `auth_keys` - Authentication keys.
 /// * `req_time` - Timestamp when the request was received.
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<Response<Body>, hyper::Error>` - The HTTP response or an error.
 pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: Uuid, addr: String, auth_keys: Arc<Vec<KeyEntry>>, req_time: chrono::DateTime<chrono::Utc>) -> Result<Response<Body>, hyper::Error> {
     if req.uri().path() == "/health" {
@@ -102,6 +102,8 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
         ).await;
     });
 
+    let response = postprocess_client_response(response, endpoint.adapter.clone()).await;
+
     Ok(response)
 }
 
@@ -120,19 +122,62 @@ async fn preprocess_request(req: Request<Body>) -> Request<Body> {
     req
 }
 
-/// Postprocess the reponse.
+/// Postprocess the response before logging.
 ///
 /// @TODO: THIS IS STUBBED OUT AND NEEDS TO BE IMPLEMENTED.
 ///
 /// # Arguments
 ///
-/// * `req` - The incoming HTTP request.
+/// * `res` - The response from the endpoint.
 ///
 /// # Returns
 ///
-/// * `Request<Body>` - The preprocessed HTTP request.
+/// * `Response<Body>` - The postprocessed body.
 async fn postprocess_response(res: Response<Body>) -> Response<Body> {
     res
+}
+
+/// Postprocess the response sent to the client after logging.
+///
+/// @TODO: THIS IS STUBBED OUT AND NEEDS TO BE IMPLEMENTED.
+///
+/// # Arguments
+///
+/// * `res` - The response from the endpoint.
+/// * `adapter` - The adapter used to process the request.
+///
+/// # Returns
+///
+/// * `Response<Body>` - The postprocessed body.
+async fn postprocess_client_response(res: Response<Body>, adapter: String) -> Response<Body> {
+    // If the adapter is deckard, we must strip debugging data.
+    if adapter == "deckard_llm_v1" {
+        let mut response = Response::new(Body::from(""));
+
+        // Copy the status code.
+        *response.status_mut() = res.status();
+
+        // Copy the headers.
+        for (key, value) in res.headers() {
+            response.headers_mut().insert(key, value.clone());
+        }
+
+        // From the body, we only want the 'query', 'response', and 'is_answer' fields.
+        let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+        let body = serde_json::from_slice::<serde_json::Value>(&body_bytes).unwrap();
+        let mut new_body = serde_json::Map::new();
+        new_body.insert("id".to_string(), body["id"].clone());
+        new_body.insert("client".to_string(), body["client"].clone());
+        new_body.insert("pipeline".to_string(), body["pipeline"].clone());
+        new_body.insert("query".to_string(), body["query"].clone());
+        new_body.insert("response".to_string(), body["response"].clone());
+        new_body.insert("is_answer".to_string(), body["is_answer"].clone());
+        let new_body_json = serde_json::Value::Object(new_body);
+
+        *response.body_mut() = Body::from(serde_json::to_string(&new_body_json).unwrap());
+        return response;
+    }
+    return res
 }
 
 /// Checks if the provided key has access to the requested endpoint.
@@ -140,7 +185,7 @@ async fn postprocess_response(res: Response<Body>) -> Response<Body> {
 /// This takes a bit of time (~100ms) Performance could be presumably improved by caching or using something like
 /// Kong. !Important!: ~100ms is generally small compared to the time the actual inference takes. The benefits
 /// may not be worth the effort.
-/// 
+///
 /// # Arguments
 ///
 /// * `keys` - Authentication keys.
