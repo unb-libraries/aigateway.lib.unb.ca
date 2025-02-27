@@ -9,7 +9,7 @@ use hyper::header::HeaderValue;
 use serde_json;
 
 /// Metadata describing an HTTP request.
-/// 
+///
 /// Fields:
 /// - `_auth_header`: An optional header value for authentication.
 /// - `pub_key`: String value for the public key.
@@ -34,7 +34,7 @@ pub struct RequestMetadata {
 }
 
 /// Metadata describing an HTTP response.
-/// 
+///
 /// Fields:
 /// - `body`: The body of the response as a String.
 /// - `headers`: The headers of the response.
@@ -77,7 +77,7 @@ impl RequestMetadata {
         let (mut parts, body) = req.into_parts();
         let body_bytes = hyper::body::to_bytes(body).await.unwrap();
         let req_body = String::from_utf8(body_bytes.to_vec()).unwrap();
-        
+
         let req_auth_header = parts.headers.get("x-api-key").cloned();
         let req_auth_key_value = req_auth_header.as_ref().and_then(|h| h.to_str().ok()).map(String::from);
 
@@ -88,7 +88,7 @@ impl RequestMetadata {
         let req_method = parts.method.clone();
         let req_headers = parts.headers.clone();
         let client_ip_address = parts.headers.get("x-forwarded-for").cloned().unwrap_or_else(|| HeaderValue::from_str(&addr).unwrap());
-        
+
         // Strip the auth header if specified.
         if strip_auth {
             parts.headers.remove("x-api-key");
@@ -144,7 +144,7 @@ impl ResponseMetadata {
         let res_headers = parts.headers.clone();
         let client_ip_address = parts.headers.get("x-forwarded-for").cloned().unwrap_or_else(|| HeaderValue::from_str(&addr).unwrap());
         let res_status = parts.status.clone();
-        
+
         let body_json: serde_json::Value = match serde_json::from_str(&res_body) {
             Ok(json) => json,
             Err(_) => serde_json::Value::Null,
@@ -152,7 +152,7 @@ impl ResponseMetadata {
         let response = body_json.get("response").unwrap_or(&serde_json::Value::Null);
 
         let req_clone = Response::from_parts(parts, Body::from(body_bytes.clone()));
-        
+
         let metadata = ResponseMetadata {
             body: res_body,
             headers: res_headers,

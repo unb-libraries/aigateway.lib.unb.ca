@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Body, Request, Response, StatusCode, header::HeaderValue};
 use uuid::Uuid;
 
 use crate::adapters::deckard_llm::DeckardLLMv1;
@@ -102,9 +102,9 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
         ).await;
     });
 
-    let response = postprocess_client_response(response, endpoint.adapter.clone()).await;
+    let client_response = postprocess_client_response(response, endpoint.adapter.clone()).await;
 
-    Ok(response)
+    Ok(client_response)
 }
 
 /// Preprocesses the HTTP request.
@@ -173,6 +173,10 @@ async fn postprocess_client_response(res: Response<Body>, adapter: String) -> Re
         new_body.insert("response".to_string(), body["response"].clone());
         new_body.insert("is_answer".to_string(), body["is_answer"].clone());
         let new_body_json = serde_json::Value::Object(new_body);
+
+        // Recalculate the content-length header
+        let content_length = serde_json::to_string(&new_body_json).unwrap().len();
+        response.headers_mut().insert("content-length", HeaderValue::from(content_length));
 
         *response.body_mut() = Body::from(serde_json::to_string(&new_body_json).unwrap());
         return response;
