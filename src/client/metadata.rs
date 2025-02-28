@@ -99,7 +99,6 @@ impl RequestMetadata {
         }
 
         let req_clone = Request::from_parts(parts, Body::from(body_bytes.clone()));
-
         let metadata = RequestMetadata {
             body: req_body,
             _auth_header: req_auth_header,

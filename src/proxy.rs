@@ -172,6 +172,7 @@ async fn postprocess_client_response(res: Response<Body>, adapter: String) -> Re
         new_body.insert("query".to_string(), body["query"].clone());
         new_body.insert("response".to_string(), body["response"].clone());
         new_body.insert("is_answer".to_string(), body["is_answer"].clone());
+        new_body.insert("source_urls".to_string(), body["is_answer"].clone());
         let new_body_json = serde_json::Value::Object(new_body);
 
         // Recalculate the content-length header

@@ -1,5 +1,5 @@
 //!
-//! This module provides functionality to interface with the Deckard LLMv1 adapter.
+//! This module provides functionality to interface with the TyrellLLMv1 adapter.
 //!
 //! Functions:
 //! - `TyrellLLMv1::new`: Creates a new instance of the TyrellLLMv1 adapter.
