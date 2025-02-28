@@ -13,7 +13,7 @@ use std::sync::Arc;
 use hyper::{Body, Request, Response, StatusCode, header::HeaderValue};
 use uuid::Uuid;
 
-use crate::adapters::deckard_llm::DeckardLLMv1;
+use crate::adapters::deckard::DeckardLLMv1;
 use crate::adapters::sebastian::SebastianLLMv1;
 use crate::adapters::tyrell::TyrellLLMv1;
 use crate::auth::{self, KeyEntry};

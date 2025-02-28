@@ -1,13 +1,12 @@
 pub mod generic;
-pub mod deckard_llm;
+pub mod deckard;
 pub mod tyrell;
 pub mod sebastian;
 
 use generic::GenericInferenceEndpointAdapter;
-use deckard_llm::DeckardLLMv1;
+use deckard::DeckardLLMv1;
 use sebastian::SebastianLLMv1;
 use tyrell::TyrellLLMv1;
-
 
 /// We may not use this at all. The intent was to provide a common interface for the adapters.
 pub enum _Adapter {
