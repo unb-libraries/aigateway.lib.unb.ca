@@ -62,15 +62,15 @@ pub async fn proxy_request(req: Request<Body>, config: Arc<Config>, request_id: 
     let response = match endpoint.adapter.as_str() {
         "deckard_llm_v1" => {
             let adapter = DeckardLLMv1::new();
-            adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
+            adapter.p_handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
         }
         "tyrell_llm_v1" => {
             let adapter = TyrellLLMv1::new();
-            adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
+            adapter.p_handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
         }
         "sebastian_llm_v1" => {
             let adapter = SebastianLLMv1::new();
-            adapter.handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
+            adapter.p_handle_request(req, &endpoint, config.clone(), request_id, addr.clone(), req_time).await?
         }
         _ => panic!("Invalid adapter: {}", endpoint.adapter),
     };

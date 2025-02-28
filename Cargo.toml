@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 argon2 = "0.5.3"
+async-trait = "0.1.51"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.2", features = ["derive"] }
 dialoguer = "0.11.0"

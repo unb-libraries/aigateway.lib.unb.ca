@@ -31,6 +31,7 @@ name = "aigateway_lib_unb_ca"
 version = "0.1.0"
 dependencies = [
  "argon2",
+ "async-trait",
  "chrono",
  "clap",
  "dialoguer",
@@ -123,6 +124,17 @@ dependencies = [
  "blake2",
  "cpufeatures",
  "password-hash",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.86"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "644dd749086bf3771a2fbc5f256fdb982d53f011c7d5d560304eafeecebce79d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
