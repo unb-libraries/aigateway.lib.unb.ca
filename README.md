@@ -57,6 +57,9 @@ To run the server, use the following command:
 ./gateway start-server
 ```
 
+## Docker
+A docker image is provided for convenience.
+
 ### Client Requests
 The gateway forwards all data in the POST requests to the configured endpoint while checking the client's authorization credentials in the ```x-pub-key``` and ```x-api-key``` header fields. Example use:
 
