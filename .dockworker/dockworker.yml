@@ -46,7 +46,7 @@ dockworker:
         - AILLM
     image:
       name: ghcr.io/unb-libraries/aigateway.lib.unb.ca
-      parent: ghcr.io/unb-libraries/base:3.x
+      parent: ghcr.io/unb-libraries/base:3.24.x
       repository: GitHub
       push-branches:
         - dev

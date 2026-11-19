@@ -1,4 +1,4 @@
-FROM rust:alpine AS builder
+FROM rust:alpine3.24 AS builder
 
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 
@@ -24,7 +24,7 @@ RUN touch src/main.rs
 RUN cargo build --release --bin aigateway_lib_unb_ca
 
 
-FROM ghcr.io/unb-libraries/base:3.x
+FROM ghcr.io/unb-libraries/base:3.24.x
 
 RUN apk add --no-cache libgcc
 ENV APP_STARTUP_CMD="/app/gateway start-server"
