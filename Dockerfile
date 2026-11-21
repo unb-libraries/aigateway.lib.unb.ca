@@ -30,11 +30,15 @@ RUN apk add --no-cache libgcc
 ENV APP_STARTUP_CMD="/app/gateway start-server"
 COPY --from=builder /app/target/release/aigateway_lib_unb_ca /app/gateway
 
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
 LABEL ca.unb.lib.generator="gateway" \
   org.opencontainers.image.title="aigateway.lib.unb.ca" \
   org.opencontainers.image.description="aigateway.lib.unb.ca routes application inference requests to the appropriate endpoints within our infrastructures." \
   org.opencontainers.image.vendor="University of New Brunswick Libraries" \
   org.opencontainers.image.authors="libsupport@unb.ca" \
+  org.opencontainers.image.url="https://github.com/unb-libraries/aigateway.lib.unb.ca" \
   org.opencontainers.image.source="https://github.com/unb-libraries/aigateway.lib.unb.ca" \
   org.opencontainers.image.version="$VERSION" \
   org.opencontainers.image.revision="$VCS_REF" \
